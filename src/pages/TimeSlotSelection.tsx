@@ -212,7 +212,7 @@ const TimeSlotSelection = () => {
               </div>
               <button
                 onClick={handleBooking}
-                disabled={isBooking}
+                disabled={isBooking || authLoading}
                 className="rounded-xl bg-accent px-8 py-3 font-medium text-accent-foreground transition-all button-shadow hover:bg-available-hover disabled:opacity-50"
               >
                 {isBooking ? "Booking..." : "Confirm Booking"}
