@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, Navigate, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import Header from "@/components/Header";
 import DatePicker from "@/components/DatePicker";
 import TimeSlotGrid from "@/components/TimeSlotGrid";
-import { SPORTS, COURTS, generateUserId } from "@/lib/constants";
+import { SPORTS, COURTS } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
 const TimeSlotSelection = () => {
   const { sport, courtId } = useParams<{ sport: string; courtId: string }>();
+  const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
@@ -20,7 +23,7 @@ const TimeSlotSelection = () => {
   const courts = sport ? COURTS[sport] : null;
   const courtData = courts?.find((c) => c.id === courtId);
 
-  // Fetch booked slots
+  // Fetch booked slots (only CONFIRMED)
   const fetchBookedSlots = async () => {
     if (!sport || !courtId) return;
 
@@ -32,7 +35,8 @@ const TimeSlotSelection = () => {
       .select("time_slot")
       .eq("sport_name", sportData?.name)
       .eq("court_name", courtData?.name)
-      .eq("date", dateStr);
+      .eq("date", dateStr)
+      .eq("status", "CONFIRMED");
 
     if (error) {
       console.error("Error fetching bookings:", error);
@@ -56,26 +60,13 @@ const TimeSlotSelection = () => {
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "bookings",
         },
         (payload) => {
-          const newBooking = payload.new as {
-            sport_name: string;
-            court_name: string;
-            date: string;
-            time_slot: string;
-          };
-          
-          const dateStr = format(selectedDate, "yyyy-MM-dd");
-          if (
-            newBooking.sport_name === sportData.name &&
-            newBooking.court_name === courtData.name &&
-            newBooking.date === dateStr
-          ) {
-            setBookedSlots((prev) => [...prev, newBooking.time_slot]);
-          }
+          // Refetch on any change to handle both inserts and cancellations
+          fetchBookedSlots();
         }
       )
       .subscribe();
@@ -93,8 +84,17 @@ const TimeSlotSelection = () => {
   const handleBooking = async () => {
     if (!selectedSlot || !sportData || !courtData) return;
 
+    // Require authentication
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to book a court.",
+      });
+      navigate("/auth");
+      return;
+    }
+
     setIsBooking(true);
-    const userId = generateUserId();
     const dateStr = format(selectedDate, "yyyy-MM-dd");
 
     const { error } = await supabase.from("bookings").insert({
@@ -102,7 +102,8 @@ const TimeSlotSelection = () => {
       court_name: courtData.name,
       date: dateStr,
       time_slot: selectedSlot,
-      user_id: userId,
+      user_id: user.id,
+      status: "CONFIRMED",
     });
 
     if (error) {
@@ -123,7 +124,7 @@ const TimeSlotSelection = () => {
       }
     } else {
       toast({
-        title: "Booking Confirmed! 🎉",
+        title: "Booking Confirmed!",
         description: `${courtData.name} booked for ${selectedSlot} on ${format(selectedDate, "MMMM d, yyyy")}`,
       });
       setSelectedSlot(null);
@@ -153,6 +154,22 @@ const TimeSlotSelection = () => {
             SELECT <span className="text-accent">DATE & TIME</span>
           </h1>
         </div>
+
+        {/* Login prompt for unauthenticated users */}
+        {!authLoading && !user && (
+          <div className="mb-6 rounded-lg border border-accent/50 bg-accent/10 p-4">
+            <p className="text-sm text-foreground">
+              <span className="font-medium">Note:</span> You'll need to{" "}
+              <button 
+                onClick={() => navigate("/auth")} 
+                className="font-medium text-accent underline hover:no-underline"
+              >
+                login or sign up
+              </button>{" "}
+              to complete your booking.
+            </p>
+          </div>
+        )}
 
         {/* Date Picker */}
         <div className="mb-8">

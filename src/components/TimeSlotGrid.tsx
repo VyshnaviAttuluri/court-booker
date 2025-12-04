@@ -11,11 +11,11 @@ interface TimeSlotGridProps {
 const TimeSlotGrid = ({ bookedSlots, selectedSlot, onSlotSelect, isLoading }: TimeSlotGridProps) => {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {TIME_SLOTS.map((slot) => (
           <div
             key={slot}
-            className="h-16 animate-pulse rounded-lg bg-muted"
+            className="h-20 animate-pulse rounded-lg bg-muted"
           />
         ))}
       </div>
@@ -23,7 +23,7 @@ const TimeSlotGrid = ({ bookedSlots, selectedSlot, onSlotSelect, isLoading }: Ti
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {TIME_SLOTS.map((slot, index) => {
         const isBooked = bookedSlots.includes(slot);
         const isSelected = selectedSlot === slot;
@@ -34,7 +34,7 @@ const TimeSlotGrid = ({ bookedSlots, selectedSlot, onSlotSelect, isLoading }: Ti
             onClick={() => !isBooked && onSlotSelect(slot)}
             disabled={isBooked}
             className={cn(
-              "relative rounded-lg px-2 py-3 text-sm font-medium transition-all duration-200",
+              "relative rounded-lg px-4 py-5 text-sm font-medium transition-all duration-200",
               "opacity-0 animate-scale-in",
               isBooked
                 ? "cursor-not-allowed bg-booked text-booked-text"
@@ -42,11 +42,11 @@ const TimeSlotGrid = ({ bookedSlots, selectedSlot, onSlotSelect, isLoading }: Ti
                 ? "bg-accent text-accent-foreground ring-2 ring-accent ring-offset-2 ring-offset-background button-shadow"
                 : "bg-available text-accent-foreground hover:bg-available-hover button-shadow hover:scale-105"
             )}
-            style={{ animationDelay: `${index * 20}ms` }}
+            style={{ animationDelay: `${index * 30}ms` }}
           >
-            <span className="block truncate">{slot}</span>
+            <span className="block font-display text-base">{slot}</span>
             {isBooked && (
-              <span className="mt-0.5 block text-xs opacity-70">Booked</span>
+              <span className="mt-1 block text-xs opacity-70">Booked</span>
             )}
           </button>
         );
